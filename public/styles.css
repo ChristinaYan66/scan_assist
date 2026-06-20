@@ -706,16 +706,22 @@ h2,
   background: var(--orange);
   color: #fff;
   box-shadow: 0 24px 70px rgba(244, 90, 26, 0.2);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .voice-orb span {
   font-size: 3rem;
   line-height: 1;
+  pointer-events: none;
 }
 
 .voice-orb strong {
   font-size: 1rem;
   font-weight: 950;
+  pointer-events: none;
 }
 
 .voice-orb.is-recording,

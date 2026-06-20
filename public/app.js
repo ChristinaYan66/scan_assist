@@ -448,6 +448,9 @@
       generateGuide("custom", question);
     });
 
+    protectVoiceButton(els.voiceAskBtn);
+    protectVoiceButton(els.dictateCustomBtn);
+    protectVoiceButton(els.dictateFollowUpBtn);
     els.voiceAskBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.voiceAskBtn));
     els.dictateCustomBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.dictateCustomBtn));
     els.dictateFollowUpBtn.addEventListener("click", () => dictateTo(els.followUpInput, els.dictateFollowUpBtn));
@@ -1089,6 +1092,11 @@
       return;
     }
 
+    if (shouldUseRecordedTranscription()) {
+      recordAudioTo(input, trigger);
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       recordAudioTo(input, trigger);
@@ -1107,6 +1115,19 @@
     };
     recognition.onerror = () => showTextFallback(input);
     recognition.start();
+  }
+
+  function protectVoiceButton(button) {
+    if (!button) return;
+    ["contextmenu", "selectstart", "dragstart"].forEach(eventName => {
+      button.addEventListener(eventName, event => event.preventDefault());
+    });
+  }
+
+  function shouldUseRecordedTranscription() {
+    const ua = navigator.userAgent || "";
+    return /Mobi|iPhone|iPad|iPod|Android|MicroMessenger|CriOS|FxiOS/i.test(ua)
+      && Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   }
 
   async function recordAudioTo(input, trigger) {
