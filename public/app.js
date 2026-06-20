@@ -247,7 +247,11 @@
     health: null,
     overlayFrame: null,
     isBusy: false,
-    currentStage: ""
+    currentStage: "",
+    voiceRecorder: null,
+    voiceChunks: [],
+    voiceInput: null,
+    voiceStopTimer: null
   };
 
   const els = {};
@@ -444,9 +448,9 @@
       generateGuide("custom", question);
     });
 
-    els.voiceAskBtn.addEventListener("click", () => dictateTo(els.customQuestion));
-    els.dictateCustomBtn.addEventListener("click", () => dictateTo(els.customQuestion));
-    els.dictateFollowUpBtn.addEventListener("click", () => dictateTo(els.followUpInput));
+    els.voiceAskBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.voiceAskBtn));
+    els.dictateCustomBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.dictateCustomBtn));
+    els.dictateFollowUpBtn.addEventListener("click", () => dictateTo(els.followUpInput, els.dictateFollowUpBtn));
     els.prevStepBtn.addEventListener("click", previousStep);
     els.speakStepBtn.addEventListener("click", speakCurrentStep);
     els.nextStepBtn.addEventListener("click", nextStep);
@@ -1079,10 +1083,15 @@
     window.speechSynthesis.speak(utterance);
   }
 
-  function dictateTo(input) {
+  function dictateTo(input, trigger) {
+    if (state.voiceRecorder && state.voiceRecorder.state === "recording") {
+      state.voiceRecorder.stop();
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showTextFallback(input);
+      recordAudioTo(input, trigger);
       return;
     }
 
@@ -1098,6 +1107,91 @@
     };
     recognition.onerror = () => showTextFallback(input);
     recognition.start();
+  }
+
+  async function recordAudioTo(input, trigger) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      showTextFallback(input);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      state.voiceChunks = [];
+      state.voiceInput = input;
+      const recorder = new MediaRecorder(stream, { mimeType: pickAudioMimeType() });
+      state.voiceRecorder = recorder;
+
+      recorder.ondataavailable = event => {
+        if (event.data && event.data.size > 0) state.voiceChunks.push(event.data);
+      };
+      recorder.onstop = async () => {
+        clearTimeout(state.voiceStopTimer);
+        stream.getTracks().forEach(track => track.stop());
+        setVoiceTriggerState(trigger, false);
+        await transcribeVoiceBlob(input, new Blob(state.voiceChunks, { type: recorder.mimeType || "audio/webm" }));
+        state.voiceRecorder = null;
+        state.voiceChunks = [];
+        state.voiceInput = null;
+      };
+
+      setVoiceTriggerState(trigger, true);
+      showToast("Listening... tap again to stop.");
+      recorder.start();
+      state.voiceStopTimer = setTimeout(() => {
+        if (recorder.state === "recording") recorder.stop();
+      }, 8000);
+    } catch (error) {
+      showTextFallback(input);
+    }
+  }
+
+  function pickAudioMimeType() {
+    const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/wav"];
+    return types.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function setVoiceTriggerState(trigger, isRecording) {
+    if (!trigger) return;
+    trigger.classList.toggle("is-recording", isRecording);
+    if (trigger === els.voiceAskBtn) {
+      trigger.querySelector("strong").textContent = isRecording ? "Listening... tap to stop" : "Tap or hold to talk";
+    } else {
+      trigger.textContent = isRecording ? "Listening..." : (trigger === els.dictateFollowUpBtn ? "♬ Speak your question" : "Voice");
+    }
+  }
+
+  async function transcribeVoiceBlob(input, blob) {
+    try {
+      setBusy(true, "Transcribing voice...");
+      const audioData = await blobToDataUrl(blob);
+      const data = await postJson("/api/transcribe-audio", {
+        audioData,
+        language: state.language
+      });
+      const text = (data.text || "").trim();
+      if (!text) {
+        showTextFallback(input);
+        return;
+      }
+      input.value = text;
+      input.focus();
+      if (els.voiceFallbackHint) els.voiceFallbackHint.hidden = true;
+    } catch (error) {
+      showToast(formatError(error));
+      showTextFallback(input);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Could not read recorded audio."));
+      reader.readAsDataURL(blob);
+    });
   }
 
   function showTextFallback(input) {

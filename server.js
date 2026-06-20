@@ -10,6 +10,7 @@ loadEnv(ENV_PATH);
 
 const PORT = Number(process.env.PORT || 5173);
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
+const OPENAI_TRANSCRIBE_MODEL = process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const ALLOW_DEMO_RESPONSES = (process.env.ALLOW_DEMO_RESPONSES || "true").toLowerCase() !== "false";
 const FORCE_DEMO_RESPONSES = (process.env.FORCE_DEMO_RESPONSES || "false").toLowerCase() === "true";
@@ -215,22 +216,27 @@ async function requestHandler(req, res) {
 
     if (req.method === "POST" && req.url === "/api/analyze-image") {
       const body = await readJsonBody(req);
-      return handleAnalyzeImage(res, body);
+      return await handleAnalyzeImage(res, body);
     }
 
     if (req.method === "POST" && req.url === "/api/generate-steps") {
       const body = await readJsonBody(req);
-      return handleGenerateSteps(res, body);
+      return await handleGenerateSteps(res, body);
     }
 
     if (req.method === "POST" && req.url === "/api/follow-up") {
       const body = await readJsonBody(req);
-      return handleFollowUp(res, body);
+      return await handleFollowUp(res, body);
     }
 
     if (req.method === "POST" && req.url === "/api/revise-step") {
       const body = await readJsonBody(req);
-      return handleReviseStep(res, body);
+      return await handleReviseStep(res, body);
+    }
+
+    if (req.method === "POST" && req.url === "/api/transcribe-audio") {
+      const body = await readJsonBody(req);
+      return await handleTranscribeAudio(res, body);
     }
 
     if (req.method === "GET") {
@@ -475,6 +481,46 @@ async function handleFollowUp(res, body) {
   });
 
   sendJson(res, 200, { ...data, demo: false });
+}
+
+async function handleTranscribeAudio(res, body) {
+  if (!HAS_OPENAI_KEY) {
+    return sendJson(res, 503, {
+      error: "OpenAI API key is not configured.",
+      message: "Voice transcription requires OPENAI_API_KEY."
+    });
+  }
+
+  const audio = validateAudioData(body.audioData);
+  const language = normalizeLanguage(body.language);
+  const form = new FormData();
+  form.append("model", OPENAI_TRANSCRIBE_MODEL);
+  form.append("response_format", "json");
+  form.append("language", language === "zh-CN" ? "zh" : "en");
+  form.append("file", new Blob([audio.buffer], { type: audio.mimeType }), audio.filename);
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`
+    },
+    body: form
+  });
+
+  const raw = await response.text();
+  let payload;
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    throw new Error(`OpenAI returned non-JSON response: ${raw.slice(0, 400)}`);
+  }
+
+  if (!response.ok) {
+    const message = payload.error?.message || response.statusText || "OpenAI transcription failed";
+    throw new Error(`OpenAI API error (${response.status}): ${message}`);
+  }
+
+  sendJson(res, 200, { text: cleanText(payload.text || "", 1000), model: OPENAI_TRANSCRIBE_MODEL });
 }
 
 async function callOpenAI({ schemaName, schema, instructions, input, maxOutputTokens }) {
@@ -800,6 +846,28 @@ function validateImageData(imageData) {
     throw new Error("Image is too large. Please retake or upload a smaller image.");
   }
   return imageData;
+}
+
+function validateAudioData(audioData) {
+  if (typeof audioData !== "string" || !audioData.startsWith("data:audio/")) {
+    throw new Error("A base64 audio data URL is required.");
+  }
+  if (Buffer.byteLength(audioData, "utf8") > MAX_BODY_BYTES - 1024) {
+    throw new Error("Audio is too large. Please record a shorter question.");
+  }
+
+  const match = audioData.match(/^data:(audio\/[a-z0-9.+-]+);base64,(.+)$/i);
+  if (!match) {
+    throw new Error("Invalid audio data URL.");
+  }
+
+  const mimeType = match[1].toLowerCase();
+  const extension = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : mimeType.includes("mpeg") ? "mp3" : "wav";
+  return {
+    buffer: Buffer.from(match[2], "base64"),
+    mimeType,
+    filename: `question.${extension}`
+  };
 }
 
 function normalizeLanguage(language) {

@@ -718,6 +718,12 @@ h2,
   font-weight: 950;
 }
 
+.voice-orb.is-recording,
+.button.is-recording {
+  background: var(--ink);
+  color: #fff;
+}
+
 .help-copy {
   color: var(--muted);
   text-align: center;
