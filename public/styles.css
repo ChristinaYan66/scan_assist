@@ -697,7 +697,7 @@ h2,
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 10px;
+  gap: 8px;
   width: 188px;
   height: 188px;
   margin: 46px auto 30px;
@@ -710,12 +710,45 @@ h2,
   -webkit-touch-callout: none;
   touch-action: manipulation;
   user-select: none;
+  --voice-level: 0;
 }
 
-.voice-orb span {
+.voice-orb .voice-icon {
   font-size: 3rem;
   line-height: 1;
   pointer-events: none;
+}
+
+.voice-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 22px;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.voice-wave i {
+  display: block;
+  width: 5px;
+  height: 18px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.72;
+  transform: scaleY(calc(0.2 + var(--voice-level) * 1.2));
+  transform-origin: center;
+  transition: transform 80ms linear, opacity 140ms ease;
+}
+
+.voice-wave i:nth-child(2),
+.voice-wave i:nth-child(3) {
+  height: 24px;
+  transform: scaleY(calc(0.25 + var(--voice-level) * 1.45));
+}
+
+.voice-wave i:nth-child(4) {
+  transform: scaleY(calc(0.18 + var(--voice-level) * 0.95));
 }
 
 .voice-orb strong {
@@ -728,6 +761,25 @@ h2,
 .button.is-recording {
   background: var(--ink);
   color: #fff;
+}
+
+.voice-orb.is-recording {
+  transform: scale(0.985);
+}
+
+.voice-orb.is-pulsing .voice-wave i {
+  animation: voice-pulse 520ms ease;
+}
+
+@keyframes voice-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+
+  40% {
+    transform: scaleY(1.25);
+  }
 }
 
 .help-copy {

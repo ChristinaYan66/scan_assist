@@ -251,7 +251,16 @@
     voiceRecorder: null,
     voiceChunks: [],
     voiceInput: null,
-    voiceStopTimer: null
+    voiceStopTimer: null,
+    voiceTrigger: null,
+    voiceAutoSubmit: null,
+    voiceStream: null,
+    voiceAudioContext: null,
+    voiceAnalyser: null,
+    voiceLevelFrame: null,
+    voiceStartedAt: 0,
+    voicePressing: false,
+    suppressVoiceClick: false
   };
 
   const els = {};
@@ -448,12 +457,9 @@
       generateGuide("custom", question);
     });
 
-    protectVoiceButton(els.voiceAskBtn);
-    protectVoiceButton(els.dictateCustomBtn);
-    protectVoiceButton(els.dictateFollowUpBtn);
-    els.voiceAskBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.voiceAskBtn));
-    els.dictateCustomBtn.addEventListener("click", () => dictateTo(els.customQuestion, els.dictateCustomBtn));
-    els.dictateFollowUpBtn.addEventListener("click", () => dictateTo(els.followUpInput, els.dictateFollowUpBtn));
+    setupVoiceHoldButton(els.voiceAskBtn, els.customQuestion, text => generateGuide("custom", text));
+    setupVoiceHoldButton(els.dictateCustomBtn, els.customQuestion, null);
+    setupVoiceHoldButton(els.dictateFollowUpBtn, els.followUpInput, sendFollowUpFromInput);
     els.prevStepBtn.addEventListener("click", previousStep);
     els.speakStepBtn.addEventListener("click", speakCurrentStep);
     els.nextStepBtn.addEventListener("click", nextStep);
@@ -1086,51 +1092,45 @@
     window.speechSynthesis.speak(utterance);
   }
 
-  function dictateTo(input, trigger) {
-    if (state.voiceRecorder && state.voiceRecorder.state === "recording") {
-      state.voiceRecorder.stop();
-      return;
-    }
-
-    if (shouldUseRecordedTranscription()) {
-      recordAudioTo(input, trigger);
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      recordAudioTo(input, trigger);
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = state.language;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => showToast(t("listening"));
-    recognition.onresult = event => {
-      const transcript = event.results[0][0].transcript;
-      input.value = transcript;
-      input.focus();
-    };
-    recognition.onerror = () => showTextFallback(input);
-    recognition.start();
-  }
-
-  function protectVoiceButton(button) {
+  function setupVoiceHoldButton(button, input, autoSubmit) {
     if (!button) return;
     ["contextmenu", "selectstart", "dragstart"].forEach(eventName => {
       button.addEventListener(eventName, event => event.preventDefault());
     });
+    button.addEventListener("pointerdown", event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      state.voicePressing = true;
+      state.suppressVoiceClick = true;
+      button.setPointerCapture?.(event.pointerId);
+      startVoiceRecording(input, button, autoSubmit);
+    });
+    button.addEventListener("pointerup", event => {
+      event.preventDefault();
+      state.voicePressing = false;
+      button.releasePointerCapture?.(event.pointerId);
+      stopVoiceRecording(false);
+    });
+    button.addEventListener("pointercancel", event => {
+      event.preventDefault();
+      state.voicePressing = false;
+      stopVoiceRecording(true);
+    });
+    button.addEventListener("lostpointercapture", () => {
+      if (state.voiceTrigger === button) stopVoiceRecording(false);
+    });
+    button.addEventListener("click", event => {
+      if (!state.suppressVoiceClick) {
+        pulseVoiceButton(button);
+        showToast("Hold to talk. Release to ask.");
+      }
+      state.suppressVoiceClick = false;
+      event.preventDefault();
+    });
   }
 
-  function shouldUseRecordedTranscription() {
-    const ua = navigator.userAgent || "";
-    return /Mobi|iPhone|iPad|iPod|Android|MicroMessenger|CriOS|FxiOS/i.test(ua)
-      && Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-  }
-
-  async function recordAudioTo(input, trigger) {
+  async function startVoiceRecording(input, trigger, autoSubmit) {
+    if (state.voiceRecorder && state.voiceRecorder.state === "recording") return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
       showTextFallback(input);
       return;
@@ -1140,6 +1140,10 @@
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       state.voiceChunks = [];
       state.voiceInput = input;
+      state.voiceTrigger = trigger;
+      state.voiceAutoSubmit = autoSubmit;
+      state.voiceStream = stream;
+      state.voiceStartedAt = Date.now();
       const recorder = new MediaRecorder(stream, { mimeType: pickAudioMimeType() });
       state.voiceRecorder = recorder;
 
@@ -1148,23 +1152,49 @@
       };
       recorder.onstop = async () => {
         clearTimeout(state.voiceStopTimer);
+        stopVoiceLevel();
         stream.getTracks().forEach(track => track.stop());
         setVoiceTriggerState(trigger, false);
-        await transcribeVoiceBlob(input, new Blob(state.voiceChunks, { type: recorder.mimeType || "audio/webm" }));
+        const elapsed = Date.now() - state.voiceStartedAt;
+        const shouldTranscribe = elapsed > 450 && state.voiceChunks.length > 0;
+        const autoSubmitHandler = state.voiceAutoSubmit;
+        const recordedChunks = state.voiceChunks;
         state.voiceRecorder = null;
         state.voiceChunks = [];
         state.voiceInput = null;
+        state.voiceTrigger = null;
+        state.voiceAutoSubmit = null;
+        state.voiceStream = null;
+        state.voiceStartedAt = 0;
+        if (!shouldTranscribe) {
+          pulseVoiceButton(trigger);
+          showToast("Hold to talk. Release to ask.");
+          return;
+        }
+        const text = await transcribeVoiceBlob(input, new Blob(recordedChunks, { type: recorder.mimeType || "audio/webm" }));
+        if (text && autoSubmitHandler) autoSubmitHandler(text);
       };
 
       setVoiceTriggerState(trigger, true);
-      showToast("Listening... tap again to stop.");
+      startVoiceLevel(stream, trigger);
+      showToast("Listening... release to ask.");
       recorder.start();
+      if (!state.voicePressing) {
+        recorder.stop();
+        return;
+      }
       state.voiceStopTimer = setTimeout(() => {
         if (recorder.state === "recording") recorder.stop();
-      }, 8000);
+      }, 12000);
     } catch (error) {
       showTextFallback(input);
     }
+  }
+
+  function stopVoiceRecording(cancelled) {
+    if (!state.voiceRecorder || state.voiceRecorder.state !== "recording") return;
+    if (cancelled) state.voiceChunks = [];
+    state.voiceRecorder.stop();
   }
 
   function pickAudioMimeType() {
@@ -1175,11 +1205,57 @@
   function setVoiceTriggerState(trigger, isRecording) {
     if (!trigger) return;
     trigger.classList.toggle("is-recording", isRecording);
+    trigger.style.setProperty("--voice-level", isRecording ? "0.35" : "0");
     if (trigger === els.voiceAskBtn) {
-      trigger.querySelector("strong").textContent = isRecording ? "Listening... tap to stop" : "Tap or hold to talk";
+      trigger.querySelector("strong").textContent = isRecording ? "Listening... release to ask" : "Hold to talk";
     } else {
-      trigger.textContent = isRecording ? "Listening..." : (trigger === els.dictateFollowUpBtn ? "♬ Speak your question" : "Voice");
+      trigger.textContent = isRecording ? "Listening... release" : (trigger === els.dictateFollowUpBtn ? "♬ Hold to speak" : "Voice");
     }
+  }
+
+  function pulseVoiceButton(trigger) {
+    if (!trigger) return;
+    trigger.classList.remove("is-pulsing");
+    void trigger.offsetWidth;
+    trigger.classList.add("is-pulsing");
+    setTimeout(() => trigger.classList.remove("is-pulsing"), 520);
+  }
+
+  function startVoiceLevel(stream, trigger) {
+    stopVoiceLevel();
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      audioContext.createMediaStreamSource(stream).connect(analyser);
+      const samples = new Uint8Array(analyser.fftSize);
+      state.voiceAudioContext = audioContext;
+      state.voiceAnalyser = analyser;
+      const tick = () => {
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        samples.forEach(value => {
+          const centered = (value - 128) / 128;
+          sum += centered * centered;
+        });
+        const level = Math.min(1, Math.max(0.08, Math.sqrt(sum / samples.length) * 7));
+        trigger.style.setProperty("--voice-level", level.toFixed(2));
+        state.voiceLevelFrame = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (error) {
+      trigger.style.setProperty("--voice-level", "0.35");
+    }
+  }
+
+  function stopVoiceLevel() {
+    if (state.voiceLevelFrame) cancelAnimationFrame(state.voiceLevelFrame);
+    state.voiceLevelFrame = null;
+    state.voiceAnalyser = null;
+    if (state.voiceAudioContext) state.voiceAudioContext.close?.();
+    state.voiceAudioContext = null;
   }
 
   async function transcribeVoiceBlob(input, blob) {
@@ -1198,9 +1274,11 @@
       input.value = text;
       input.focus();
       if (els.voiceFallbackHint) els.voiceFallbackHint.hidden = true;
+      return text;
     } catch (error) {
       showToast(formatError(error));
       showTextFallback(input);
+      return "";
     } finally {
       setBusy(false);
     }
