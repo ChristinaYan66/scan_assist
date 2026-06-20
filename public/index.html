@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0d0d18">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>ScanAssist</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to app</a>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <main id="main" class="phone-stage">
+      <div class="device-frame">
+        <div class="device-notch" aria-hidden="true"></div>
+        <div id="apiBanner" class="api-banner" role="status"></div>
+
+        <section id="onboardingSection" class="app-screen onboarding-screen" data-step-label="ONBOARDING">
+          <button id="onboardingSkipBtn" class="text-link skip-onboarding" type="button">Skip</button>
+          <div class="demo-card">
+            <button class="play-button" type="button" aria-label="Play voice guide">▶</button>
+            <div class="demo-count">1 / 3</div>
+            <div class="demo-visual" aria-hidden="true">
+              <div class="demo-camera">📷</div>
+              <div class="demo-scan">
+                <span>SCANNING</span>
+                <div class="demo-cube">🧊</div>
+              </div>
+            </div>
+            <div class="demo-progress"></div>
+          </div>
+          <div class="voice-status"><span></span> 🔊 Playing with voice guide</div>
+          <h1>Point your camera at any appliance</h1>
+          <p class="screen-copy">Hold your phone up to any device at home — fridge, microwave, remote, and more.</p>
+          <div class="pager-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div>
+          <button id="onboardingNextBtn" class="button button-primary" type="button">Next</button>
+        </section>
+
+        <section id="homeSection" class="app-screen home-screen" data-step-label="HOME" hidden>
+          <div class="home-center">
+            <div class="app-icon">⌑</div>
+            <h1>ScanAssist</h1>
+            <p class="screen-copy">Photo-based step-by-step help for your devices.</p>
+          </div>
+          <div class="home-actions">
+            <button id="homeTakePhotoBtn" class="button button-primary" type="button">⌑ Take a Photo</button>
+            <div class="two-col">
+              <button id="homeSavedBtn" class="button button-secondary" type="button">› Saved guides</button>
+              <button id="homeHelpBtn" class="button button-secondary" type="button">♡ Help</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="captureSection" class="app-screen" data-step-label="CAMERA" hidden>
+          <div class="screen-nav">
+            <button class="icon-button back-button" type="button" data-back="home" aria-label="Back">←</button>
+            <h1>Take a photo</h1>
+            <button class="icon-button home-button" type="button" data-home aria-label="Home">⌂</button>
+          </div>
+          <div id="captureReviewNotice" class="notice review-notice" hidden></div>
+          <div id="cameraFallbackNotice" class="notice mobile-notice" hidden>
+            Camera preview is blocked in this browser. Use Take or upload photo to continue.
+          </div>
+          <div class="camera-surface" aria-label="Camera and preview area">
+            <video id="cameraVideo" playsinline autoplay muted hidden></video>
+            <img id="previewImage" alt="Captured preview" hidden>
+            <canvas id="captureCanvas" hidden></canvas>
+            <div id="cameraPlaceholder" class="camera-placeholder">
+              <div class="focus-line" aria-hidden="true"></div>
+              <div class="focus-ring" aria-hidden="true"></div>
+              <p>Point at your device</p>
+            </div>
+            <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          </div>
+          <div class="camera-actions">
+            <button id="captureBtn" class="shutter-button" type="button" disabled aria-label="Take photo"></button>
+            <button id="startCameraBtn" class="button button-secondary compact" type="button">Open camera</button>
+            <label class="button button-secondary compact file-button">
+              <span id="fileButtonLabel">Take or upload photo</span>
+              <input id="fileInput" type="file" accept="image/*" capture="environment">
+            </label>
+            <button id="retakeBtn" class="button button-secondary compact" type="button" hidden>Retake</button>
+            <button id="analyzeBtn" class="button button-primary compact" type="button" hidden>Analyze device</button>
+          </div>
+          <div id="imageQuality" class="notice" hidden></div>
+          <p class="camera-caption">Works for appliances, remotes, buttons, and everyday devices.</p>
+        </section>
+
+        <section id="analysisSection" class="app-screen" data-step-label="CONFIRM" hidden>
+          <div class="screen-nav">
+            <button class="icon-button back-button" type="button" data-back="capture" aria-label="Back">←</button>
+            <h1>Check your device</h1>
+            <button class="icon-button home-button" type="button" data-home aria-label="Home">⌂</button>
+          </div>
+          <h2>Is this what you see?</h2>
+          <p class="screen-copy">We identified your device from the photo.</p>
+          <article class="device-card">
+            <div class="device-photo">
+              <img id="analysisPreview" alt="Detected device preview">
+              <span>Detected</span>
+            </div>
+            <div class="device-card-body">
+              <div id="objectName" class="object-name"></div>
+              <div id="confidenceBadge" class="badge"></div>
+              <p id="objectDescription" class="description"></p>
+              <div id="componentList" class="component-list"></div>
+            </div>
+          </article>
+          <div class="confirm-actions">
+            <button id="confirmObjectBtn" class="button button-primary" type="button">✓ Yes, that's right</button>
+            <button id="correctObjectBtn" class="button button-outline" type="button">× No, retake photo</button>
+          </div>
+          <div id="correctionBox" class="correction-box" hidden>
+            <label for="correctionInput">It is actually</label>
+            <input id="correctionInput" class="text-input" type="text" autocomplete="off">
+            <button id="useCorrectionBtn" class="button button-primary compact" type="button">Use this name</button>
+          </div>
+        </section>
+
+        <section id="intentSection" class="app-screen help-screen" data-step-label="HELP TYPE" hidden>
+          <div class="screen-nav">
+            <button class="icon-button back-button" type="button" data-back="analysis" aria-label="Back">←</button>
+            <h1 id="intentDeviceTitle">Device panel</h1>
+            <button class="icon-button home-button" type="button" data-home aria-label="Home">⌂</button>
+          </div>
+          <article class="compact-device-card">
+            <div class="mini-thumb">🧊</div>
+            <div>
+              <strong id="intentObjectName">Device</strong>
+              <p id="intentObjectSummary">Ready to help</p>
+            </div>
+          </article>
+          <div class="additional-context">
+            <label for="additionalContext">Anything I should know?</label>
+            <textarea id="additionalContext" class="text-input context-input" rows="2" autocomplete="off"></textarea>
+          </div>
+          <button id="voiceAskBtn" class="voice-orb" type="button" aria-label="Speak your question">
+            <span>♬</span>
+            <strong>Tap or hold to talk</strong>
+          </button>
+          <p class="help-copy">Ask anything about your device, or what to do next.</p>
+          <div class="intent-grid" role="group" aria-label="Help options">
+            <button class="intent-button" type="button" data-intent="use">How to use it</button>
+            <button class="intent-button" type="button" data-intent="fix">Fix a problem</button>
+            <button class="intent-button" type="button" data-intent="explain">Explain this</button>
+            <button class="intent-button" type="button" data-intent="check">Check my work</button>
+          </div>
+          <div class="custom-question">
+            <label for="customQuestion">Prefer typing? Switch to text</label>
+            <p id="voiceFallbackHint" class="inline-hint" hidden>Voice input is blocked here. Type your question, or tap the iPhone keyboard microphone.</p>
+            <div class="input-row">
+              <input id="customQuestion" class="text-input" type="text" autocomplete="off">
+              <button id="dictateCustomBtn" class="button button-secondary compact" type="button">Voice</button>
+              <button id="askCustomBtn" class="button button-primary compact" type="button">Ask</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="guideSection" class="app-screen guide-screen" data-step-label="GUIDANCE" hidden>
+          <div class="screen-nav">
+            <button class="icon-button back-button" type="button" data-back="intent" aria-label="Back">←</button>
+            <h1 id="guideTitle">How to use it</h1>
+            <button class="icon-button home-button" type="button" data-home aria-label="Home">⌂</button>
+          </div>
+          <div id="guideDemoBadge" class="badge demo-badge" hidden>Demo mode</div>
+          <div id="safetyWarning" class="safety-warning" hidden></div>
+          <div class="photo-workspace">
+            <div class="photo-frame">
+              <div id="stepProgress" class="step-progress"></div>
+              <img id="guideImage" alt="Object being assisted">
+              <canvas id="overlayCanvas"></canvas>
+            </div>
+          </div>
+          <article class="step-card" aria-live="polite">
+            <div id="stepNumber" class="step-number"></div>
+            <p id="stepInstruction" class="step-instruction"></p>
+            <p id="stepFallback" class="step-fallback"></p>
+          </article>
+          <div class="follow-up-box">
+            <label for="followUpInput">Ask about this step...</label>
+            <div id="quickReplies" class="quick-replies"></div>
+            <div class="input-row stacked">
+              <input id="followUpInput" class="text-input" type="text" autocomplete="off">
+              <button id="dictateFollowUpBtn" class="button button-primary" type="button">♬ Speak your question</button>
+              <button id="sendFollowUpBtn" class="button button-secondary compact" type="button">Send</button>
+            </div>
+            <div id="followUpAnswer" class="follow-up-answer" hidden></div>
+          </div>
+          <div id="checkPanel" class="check-panel" hidden>
+            <p id="checkPrompt"></p>
+            <div class="two-col">
+              <button id="checkYesBtn" class="button button-primary compact" type="button">Looks correct</button>
+              <button id="checkUnsureBtn" class="button button-secondary compact" type="button">Not sure</button>
+            </div>
+          </div>
+          <div id="completionPanel" class="completion-panel" hidden>
+            <p id="completionPrompt"></p>
+            <button id="completionConfirmBtn" class="button button-primary compact" type="button">I confirm</button>
+            <button id="completionPhotoCheckBtn" class="button button-secondary compact" type="button">Check a photo</button>
+            <button id="completionMenuBtn" class="button button-outline compact" type="button">Choose another option</button>
+          </div>
+          <div class="step-adjust-box" hidden>
+            <label for="stepAdjustInput">Help AI understand this step</label>
+            <textarea id="stepAdjustInput" class="text-input context-input compact-context-input" rows="2" autocomplete="off"></textarea>
+            <button id="updateStepBtn" class="button button-primary compact" type="button">Update step</button>
+          </div>
+          <div class="step-actions two-col">
+            <button id="prevStepBtn" class="button button-secondary" type="button">Back</button>
+            <button id="nextStepBtn" class="button button-primary" type="button">Next</button>
+          </div>
+          <div class="save-row">
+            <button id="speakStepBtn" class="button button-secondary compact" type="button">Replay</button>
+            <button id="checkStepBtn" class="button button-secondary compact" type="button">Check</button>
+            <button id="chooseOptionBtn" class="button button-secondary compact" type="button">Help type</button>
+            <button id="saveGuideBtn" class="button button-secondary compact" type="button">Save guide</button>
+            <button id="newScanBtn" class="button button-secondary compact" type="button">New scan</button>
+          </div>
+        </section>
+
+        <section id="archiveSection" class="app-screen saved-screen" data-step-label="SAVED GUIDES" hidden>
+          <div class="screen-nav">
+            <span></span>
+            <h1>Saved Guides</h1>
+            <button class="icon-button home-button" type="button" data-home aria-label="Home">⌂</button>
+          </div>
+          <div id="archiveList" class="history-list"></div>
+          <button id="closeArchiveBtn" class="button button-secondary compact" type="button">Back to app</button>
+        </section>
+      </div>
+    </main>
+
+    <div id="busyOverlay" class="busy-overlay" hidden>
+      <div class="busy-box" role="status" aria-live="assertive">
+        <div class="spinner" aria-hidden="true"></div>
+        <div id="busyText" class="busy-text">Working...</div>
+      </div>
+    </div>
+
+    <dialog id="historyDialog" class="history-dialog">
+      <div class="dialog-head">
+        <h2>Saved Guides</h2>
+        <button id="closeHistoryBtn" class="button button-secondary compact" type="button">Close</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </dialog>
+
+    <input id="contrastToggle" type="checkbox" hidden>
+    <input id="autoReadToggle" type="checkbox" checked hidden>
+    <button id="historyBtn" type="button" hidden></button>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

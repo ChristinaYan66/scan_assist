@@ -1,0 +1,18 @@
+I interviewed one participant, but he is not really part of our target customer segment.
+
+* He is around 60 years old and is capable of using a smartphone.
+* He mentioned that if an app like this existed and he were in his 70s or 80s, he would be willing to use it.
+* Currently, when he encounters problems in daily life, he usually asks his partner for help. If his partner is unavailable, he simply waits until they are available rather than seeking another solution.
+* Interestingly, compared to physical devices, he is even less familiar with and less confident using mobile apps.
+
+Feedback on App Features
+
+* He prefers the app to support multiple ways of receiving information and interacting with content.
+* If possible, he would like comprehensive accessibility options, including text, visuals, and especially audio.
+* Voice playback is particularly important because there are situations where reading the screen may be inconvenient, and he would prefer to have information read aloud.
+
+Recommendation for Uncertain Features
+
+* Regarding features that the team is unsure whether to include (such as a save/store function), his feedback suggests:
+    * Make it an optional feature rather than forcing it on all users.
+    * This allows users to choose whether they want to use the functionality based on their preferences.

@@ -1,0 +1,14 @@
+{
+  "name": "scanassist-hackerson",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Accessible photo-based AI guidance prototype for elderly users.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
