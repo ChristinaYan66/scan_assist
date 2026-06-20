@@ -486,7 +486,10 @@
     els.closeHistoryBtn.addEventListener("click", () => els.historyDialog.close());
     els.closeArchiveBtn.addEventListener("click", closeArchive);
 
-    els.guideImage.addEventListener("load", () => drawOverlay(getCurrentStep()));
+    els.guideImage.addEventListener("load", () => {
+      syncGuidePhotoFrame();
+      drawOverlay(getCurrentStep());
+    });
     els.guideImage.addEventListener("contextmenu", event => event.preventDefault());
     window.addEventListener("resize", () => drawOverlay(getCurrentStep()));
   }
@@ -1375,6 +1378,13 @@
     };
 
     render(0);
+  }
+
+  function syncGuidePhotoFrame() {
+    const image = els.guideImage;
+    const frame = image?.parentElement;
+    if (!image || !frame || !image.naturalWidth || !image.naturalHeight) return;
+    frame.style.setProperty("--photo-aspect", `${image.naturalWidth} / ${image.naturalHeight}`);
   }
 
   function clearCanvas(canvas, ctx) {
