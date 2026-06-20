@@ -201,7 +201,7 @@ const followUpSchema = {
 
 const reviseStepSchema = guideSchema.properties.steps.items;
 
-const server = http.createServer(async (req, res) => {
+async function requestHandler(req, res) {
   try {
     if (req.method === "GET" && req.url === "/health") {
       return sendJson(res, 200, {
@@ -245,12 +245,18 @@ const server = http.createServer(async (req, res) => {
       message: error.message || "Unknown server error"
     });
   }
-});
+}
 
-server.listen(PORT, () => {
-  const mode = OPENAI_API_KEY ? `OpenAI model ${OPENAI_MODEL}` : "demo mode, no API key";
-  console.log(`ScanAssist running at http://localhost:${PORT} (${mode})`);
-});
+const server = http.createServer(requestHandler);
+
+if (require.main === module) {
+  server.listen(PORT, () => {
+    const mode = OPENAI_API_KEY ? `OpenAI model ${OPENAI_MODEL}` : "demo mode, no API key";
+    console.log(`ScanAssist running at http://localhost:${PORT} (${mode})`);
+  });
+}
+
+module.exports = requestHandler;
 
 async function handleAnalyzeImage(res, body) {
   const language = normalizeLanguage(body.language);
