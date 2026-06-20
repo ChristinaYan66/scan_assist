@@ -266,6 +266,14 @@
   const els = {};
 
   document.addEventListener("DOMContentLoaded", init);
+  registerServiceWorker();
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    });
+  }
 
   function init() {
     cacheElements();

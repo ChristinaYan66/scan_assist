@@ -5,7 +5,7 @@
   "description": "Accessible photo-based AI guidance prototype for elderly users.",
   "type": "commonjs",
   "scripts": {
-    "build": "node --check server.js && node --check public/app.js",
+    "build": "node --check server.js && node --check public/app.js && node --check public/service-worker.js",
     "start": "node server.js",
     "dev": "node server.js"
   },

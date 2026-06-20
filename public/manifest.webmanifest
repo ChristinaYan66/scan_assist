@@ -1,0 +1,26 @@
+{
+  "name": "ScanAssist",
+  "short_name": "ScanAssist",
+  "description": "Photo-based step-by-step help for everyday devices.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d18",
+  "theme_color": "#f45a1a",
+  "categories": ["accessibility", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
