@@ -1179,14 +1179,15 @@
           showToast("Hold to talk. Release to ask.");
           return;
         }
-        const text = await transcribeVoiceBlob(input, new Blob(recordedChunks, { type: recorder.mimeType || "audio/webm" }));
+        const mimeType = (recorder.mimeType || "audio/webm").split(";")[0];
+        const text = await transcribeVoiceBlob(input, new Blob(recordedChunks, { type: mimeType }));
         if (text && autoSubmitHandler) autoSubmitHandler(text);
       };
 
       setVoiceTriggerState(trigger, true);
       startVoiceLevel(stream, trigger);
       showToast("Listening... release to ask.");
-      recorder.start();
+      recorder.start(250);
       if (!state.voicePressing) {
         recorder.stop();
         return;
@@ -1202,6 +1203,9 @@
   function stopVoiceRecording(cancelled) {
     if (!state.voiceRecorder || state.voiceRecorder.state !== "recording") return;
     if (cancelled) state.voiceChunks = [];
+    try {
+      state.voiceRecorder.requestData();
+    } catch (error) {}
     state.voiceRecorder.stop();
   }
 
@@ -1276,7 +1280,7 @@
       });
       const text = (data.text || "").trim();
       if (!text) {
-        showTextFallback(input);
+        showVoiceHint("I could not hear words. Hold again and speak closer, or type your question.");
         return;
       }
       input.value = text;
@@ -1285,7 +1289,7 @@
       return text;
     } catch (error) {
       showToast(formatError(error));
-      showTextFallback(input);
+      showVoiceHint("Voice was recorded, but transcription failed. Try again, or type your question.");
       return "";
     } finally {
       setBusy(false);
@@ -1302,12 +1306,17 @@
   }
 
   function showTextFallback(input) {
+    showVoiceHint("Voice input is blocked here. Type your question, or tap the iPhone keyboard microphone.");
+    input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setTimeout(() => input.focus(), 80);
+  }
+
+  function showVoiceHint(message) {
     if (els.voiceFallbackHint) {
+      els.voiceFallbackHint.textContent = message;
       els.voiceFallbackHint.hidden = false;
     }
     els.toast.hidden = true;
-    input.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    setTimeout(() => input.focus(), 80);
   }
 
   function drawOverlay(target) {

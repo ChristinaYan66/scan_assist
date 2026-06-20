@@ -856,7 +856,7 @@ function validateAudioData(audioData) {
     throw new Error("Audio is too large. Please record a shorter question.");
   }
 
-  const match = audioData.match(/^data:(audio\/[a-z0-9.+-]+);base64,(.+)$/i);
+  const match = audioData.match(/^data:(audio\/[a-z0-9.+-]+)(?:;[^,]+)?;base64,(.+)$/i);
   if (!match) {
     throw new Error("Invalid audio data URL.");
   }
