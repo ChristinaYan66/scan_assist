@@ -708,9 +708,19 @@ h2,
   box-shadow: 0 24px 70px rgba(244, 90, 26, 0.2);
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -moz-user-select: none;
   touch-action: manipulation;
   user-select: none;
   --voice-level: 0;
+}
+
+.voice-orb * {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .voice-orb .voice-icon {
@@ -755,6 +765,9 @@ h2,
   font-size: 1rem;
   font-weight: 950;
   pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .voice-orb.is-recording,
@@ -815,16 +828,14 @@ h2,
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: var(--photo-aspect, 4 / 3);
-  min-height: 220px;
-  max-height: 68vh;
-  padding: 42px 28px 24px;
+  aspect-ratio: auto;
+  padding: 0;
 }
 
 .photo-frame img {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   object-fit: contain;
   opacity: 0.82;
   -webkit-touch-callout: none;

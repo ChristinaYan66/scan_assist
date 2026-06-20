@@ -1111,6 +1111,7 @@
     button.addEventListener("pointerdown", event => {
       if (event.button !== undefined && event.button !== 0) return;
       event.preventDefault();
+      window.getSelection?.().removeAllRanges();
       state.voicePressing = true;
       state.suppressVoiceClick = true;
       button.setPointerCapture?.(event.pointerId);
